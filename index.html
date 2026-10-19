@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examen de Química - 6° Grado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0fdf4; }
+        .question-card { display: none; animation: fadeIn 0.5s; }
+        .active-card { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .option-label { transition: all 0.2s ease; cursor: pointer; }
+        .option-label:hover { background-color: #dbeafe; }
+        input[type="radio"]:checked + .option-box { background-color: #bfdbfe; border-color: #3b82f6; transform: scale(1.02); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 sm:p-8">
+
+    <!-- Banner -->
+    <div class="w-full max-w-4xl bg-white shadow-xl rounded-2xl overflow-hidden mb-6 border-4 border-blue-900">
+        <img src="image_0.png" alt="Banner Examen" class="w-full h-auto" id="bannerImg" crossorigin="anonymous" onerror="this.style.display='none';">
+    </div>
+
+    <!-- Intro Screen -->
+    <div id="introScreen" class="w-full max-w-4xl bg-white p-8 rounded-2xl shadow-xl text-center border-t-8 border-blue-900">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4"><i class="fa-solid fa-flask text-blue-600"></i> Examen Parcial de Química</h1>
+        <p class="text-xl text-gray-600 mb-6">Temas: Compuestos Orgánicos, Sustancias Puras y Mezclas.</p>
+        
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8 text-left rounded-r-lg">
+            <h3 class="font-bold text-yellow-800 text-lg mb-2"><i class="fa-solid fa-circle-info"></i> Instrucciones (Prueba Saber):</h3>
+            <ul class="list-disc ml-6 text-yellow-700 text-lg space-y-2">
+                <li>Tienes <strong>45 minutos</strong> para completar 10 preguntas.</li>
+                <li>Puedes avanzar y retroceder sin problema en las preguntas.</li>
+                <li>Observa bien las <strong>imágenes</strong>; están ahí para ayudarte.</li>
+                <li>Al finalizar, se descargará automáticamente tu informe en PDF.</li>
+            </ul>
+        </div>
+
+        <div class="max-w-md mx-auto mb-8">
+            <label class="block text-left font-bold text-gray-700 text-lg mb-2">Nombre del Estudiante:</label>
+            <input type="text" id="studentName" class="w-full text-xl p-4 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" placeholder="Escribe tu nombre aquí..." autocomplete="off">
+        </div>
+
+        <button onclick="startExam()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-full text-2xl shadow-lg transform transition hover:scale-105">
+            <i class="fa-solid fa-play"></i> Iniciar Examen
+        </button>
+    </div>
+
+    <!-- Exam Screen -->
+    <div id="examScreen" class="w-full max-w-4xl hidden relative pb-20">
+        
+        <!-- Sticky Header -->
+        <div class="sticky top-0 z-50 bg-white p-4 rounded-xl shadow-md mb-6 flex justify-between items-center border-b-4 border-blue-600">
+            <div class="text-xl font-bold text-gray-700">
+                <i class="fa-solid fa-list-ol text-blue-500"></i> Pregunta <span id="currentNumber">1</span> de 10
+            </div>
+            <div class="text-2xl font-black text-red-600 bg-red-50 px-4 py-2 rounded-lg border border-red-200">
+                <i class="fa-regular fa-clock"></i> <span id="timerDisplay">45:00</span>
+            </div>
+        </div>
+
+        <!-- Questions Container -->
+        <div id="questionsContainer" class="bg-white rounded-2xl shadow-xl p-6 md:p-8">
+            <!-- Rendered by JS -->
+        </div>
+
+        <!-- Navigation -->
+        <div class="flex justify-between items-center mt-8">
+            <button onclick="prevQuestion()" id="btnPrev" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-xl text-lg hidden">
+                <i class="fa-solid fa-arrow-left"></i> Anterior
+            </button>
+            <button onclick="nextQuestion()" id="btnNext" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl text-lg ml-auto shadow-md">
+                Siguiente <i class="fa-solid fa-arrow-right"></i>
+            </button>
+            <button onclick="finishExam()" id="btnFinish" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl text-lg hidden shadow-md">
+                <i class="fa-solid fa-check-double"></i> Finalizar y Generar PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- End Screen -->
+    <div id="endScreen" class="w-full max-w-4xl bg-white p-10 rounded-2xl shadow-xl text-center hidden border-t-8 border-green-600">
+        <div class="text-6xl text-green-500 mb-6"><i class="fa-solid fa-circle-check"></i></div>
+        <h1 class="text-4xl font-bold text-gray-800 mb-4">¡Examen Terminado!</h1>
+        <p class="text-2xl text-gray-600 mb-6" id="finalMessage">Buen trabajo. Estamos generando tu reporte en PDF...</p>
+        <button onclick="location.reload()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg mt-4">
+            <i class="fa-solid fa-rotate-right"></i> Volver al Inicio
+        </button>
+    </div>
+
+    <script>
+        const questions = [
+            {
+                type: "closed",
+                title: "Observa la imagen. La primera opción muestra oro (sustancia pura), la segunda agua con arena (mezcla) y la tercera una ensalada (mezcla). ¿Cuál es una SUSTANCIA PURA (un elemento)?",
+                image: "image_1.png",
+                options: ["El Oro (Izquierda)", "Agua con arena (Centro)", "La Ensalada (Derecha)"],
+                correct: 0
+            },
+            {
+                type: "closed",
+                title: "En una ensalada puedes ver a simple vista los diferentes ingredientes (lechuga, tomate, cebolla). ¿Qué tipo de mezcla es?",
+                image: "image_8.png",
+                options: ["Mezcla Homogénea", "Mezcla Heterogénea", "Sustancia Pura"],
+                correct: 1
+            },
+            {
+                type: "closed",
+                title: "Cuando agregas azúcar al agua y la revuelves muy bien (como en la imagen), se disuelve por completo y se ve igual en todas sus partes. ¿Qué tipo de mezcla se forma?",
+                image: "image_6.png",
+                options: ["Mezcla Homogénea", "Mezcla Heterogénea", "Sustancia Pura"],
+                correct: 0
+            },
+            {
+                type: "closed",
+                title: "El azúcar que consumimos a diario (como el de la imagen) está hecha de Carbono, Hidrógeno y Oxígeno. Al ser rica en átomos de Carbono y provenir de seres vivos (la caña de azúcar), pertenece al grupo de:",
+                image: "image_5.png",
+                options: ["Compuestos Orgánicos", "Compuestos Inorgánicos", "Sustancias Simples"],
+                correct: 0
+            },
+            {
+                type: "closed",
+                title: "Cuando intentas mezclar agua y aceite (como en la imagen), estos no se unen y se separan en dos capas visibles muy claras. Esto es un ejemplo de:",
+                image: "image_4.png",
+                options: ["Mezcla Homogénea", "Mezcla Heterogénea", "Sustancia Pura"],
+                correct: 1
+            },
+            {
+                type: "closed",
+                title: "La sal de mesa (Cloruro de Sodio, como en la imagen) siempre tiene la misma composición exacta de elementos en todas partes. Es un ejemplo de:",
+                image: "image_2.png",
+                options: ["Sustancia Pura (Compuesto)", "Mezcla Homogénea", "Mezcla Heterogénea"],
+                correct: 0
+            },
+            {
+                type: "closed",
+                title: "Si en un vaso mezclas agua con arena y piedras (como en la imagen), puedes ver claramente todos sus componentes acumulados y separados. ¿Qué tipo de mezcla es esta?",
+                image: "image_3.png",
+                options: ["Mezcla Heterogénea", "Mezcla Homogénea", "Sustancia Pura"],
+                correct: 0
+            },
+            {
+                type: "closed",
+                title: "El aire libre con el que inflamos los globos (como en la imagen) contiene varios gases (nitrógeno, oxígeno y helio) mezclados perfectamente, de forma invisible y uniforme. ¿Qué tipo de mezcla es?",
+                image: "image_7.png",
+                options: ["Mezcla Homogénea", "Mezcla Heterogénea", "No es una mezcla"],
+                correct: 0
+            },
+            {
+                type: "open",
+                title: "PREGUNTA ABIERTA: Mira de nuevo la ensalada (imagen 8). Escribe con tus propias palabras por qué se puede notar a simple vista que es una mezcla heterogénea.",
+                image: "image_8.png"
+            },
+            {
+                type: "open",
+                title: "PREGUNTA ABIERTA: El plástico de los juguetes se fabrica a partir de compuestos orgánicos derivados del petróleo. Nombra un objeto de plástico que utilices todos los días en tu casa o en el colegio.",
+                image: "image_7.png"
+            }
+        ];
+
+        let currentQ = 0;
+        let answers = new Array(10).fill(null);
+        let studentName = "";
+        
+        let timeLeft = 45 * 60; // 45 minutes
+        let timerInterval;
+
+        function startExam() {
+            const nameInput = document.getElementById('studentName').value.trim();
+            if(!nameInput) {
+                alert("Por favor, escribe tu nombre para comenzar.");
+                return;
+            }
+            studentName = nameInput;
+            document.getElementById('introScreen').style.display = 'none';
+            document.getElementById('examScreen').classList.remove('hidden');
+            renderAllQuestions();
+            updateUI();
+            startTimer();
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                let m = Math.floor(timeLeft / 60);
+                let s = timeLeft % 60;
+                document.getElementById('timerDisplay').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+                if(timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    alert("¡El tiempo se ha acabado! El examen se enviará automáticamente.");
+                    finishExam();
+                }
+            }, 1000);
+        }
+
+        function renderAllQuestions() {
+            const container = document.getElementById('questionsContainer');
+            let html = "";
+            questions.forEach((q, i) => {
+                html += `<div id="q_${i}" class="question-card ${i === 0 ? 'active-card' : ''}">`;
+                html += `<h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-6 leading-tight">${i+1}. ${q.title}</h2>`;
+                
+                html += `<div class="mb-8 rounded-xl overflow-hidden shadow-md border-2 border-gray-200 bg-gray-50 flex justify-center max-h-96">
+                            <img src="${q.image}" alt="Imagen de apoyo" class="w-full h-full max-h-96 object-contain rounded-xl">
+                         </div>`;
+                
+                if(q.type === 'closed') {
+                    html += `<div class="space-y-4">`;
+                    q.options.forEach((opt, optIdx) => {
+                        let checked = answers[i] === optIdx ? "checked" : "";
+                        html += `
+                        <label class="option-label block relative">
+                            <input type="radio" name="ans_${i}" value="${optIdx}" class="hidden" onchange="saveAnswer(${i}, ${optIdx})" ${checked}>
+                            <div class="option-box border-2 border-gray-300 rounded-xl p-5 text-xl font-medium text-gray-700 bg-gray-50 flex items-center">
+                                <span class="w-8 h-8 rounded-full border-2 border-gray-400 flex items-center justify-center mr-4 bg-white indicator">
+                                    <div class="w-4 h-4 rounded-full bg-blue-500 hidden inner-dot"></div>
+                                </span>
+                                ${opt}
+                            </div>
+                        </label>`;
+                    });
+                    html += `</div>`;
+                } else {
+                    let val = answers[i] || "";
+                    html += `
+                        <textarea oninput="saveAnswer(${i}, this.value)" rows="5" class="w-full text-xl p-4 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" placeholder="Escribe tu respuesta aquí de forma clara...">${val}</textarea>
+                    `;
+                }
+                html += `</div>`;
+            });
+            container.innerHTML = html;
+            
+            const style = document.createElement('style');
+            style.innerHTML = `
+                input[type="radio"]:checked + .option-box .inner-dot { display: block; }
+                input[type="radio"]:checked + .option-box .indicator { border-color: #3b82f6; }
+            `;
+            document.head.appendChild(style);
+        }
+
+        function saveAnswer(qIndex, value) {
+            answers[qIndex] = value;
+        }
+
+        function updateUI() {
+            document.querySelectorAll('.question-card').forEach((el, i) => {
+                el.classList.toggle('active-card', i === currentQ);
+            });
+            document.getElementById('currentNumber').innerText = currentQ + 1;
+            
+            document.getElementById('btnPrev').classList.toggle('hidden', currentQ === 0);
+            
+            if(currentQ === questions.length - 1) {
+                document.getElementById('btnNext').classList.add('hidden');
+                document.getElementById('btnFinish').classList.remove('hidden');
+            } else {
+                document.getElementById('btnNext').classList.remove('hidden');
+                document.getElementById('btnFinish').classList.add('hidden');
+            }
+        }
+
+        function prevQuestion() {
+            if(currentQ > 0) { currentQ--; updateUI(); }
+        }
+
+        function nextQuestion() {
+            if(currentQ < questions.length - 1) { currentQ++; updateUI(); }
+        }
+
+        function getBase64Image(img) {
+            try {
+                let canvas = document.createElement("canvas");
+                canvas.width = img.naturalWidth || img.width;
+                canvas.height = img.naturalHeight || img.height;
+                let ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0);
+                return canvas.toDataURL("image/jpeg");
+            } catch(e) {
+                return null;
+            }
+        }
+
+        async function finishExam() {
+            clearInterval(timerInterval);
+            document.getElementById('examScreen').style.display = 'none';
+            document.getElementById('endScreen').classList.remove('hidden');
+            
+            await generatePDF();
+            document.getElementById('finalMessage').innerText = "¡Tu informe PDF ha sido generado y descargado con éxito!";
+        }
+
+        async function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'letter');
+            let yPos = 15;
+
+            const bannerImg = document.getElementById('bannerImg');
+            if (bannerImg && bannerImg.complete && bannerImg.naturalWidth !== 0) {
+                let b64 = getBase64Image(bannerImg);
+                if(b64) {
+                    doc.addImage(b64, 'JPEG', 10, yPos, 195, 35);
+                    yPos += 45;
+                }
+            } else {
+                doc.setFontSize(20);
+                doc.setTextColor(30, 58, 138);
+                doc.text("EXAMEN PARCIAL DE QUÍMICA", 105, yPos, {align: "center"});
+                yPos += 15;
+            }
+
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold");
+            doc.text(`Estudiante: ${studentName}`, 15, yPos);
+            yPos += 8;
+            
+            const dateStr = new Date().toLocaleDateString('es-CO');
+            const timeTaken = (45*60) - timeLeft;
+            const mins = Math.floor(timeTaken/60);
+            const secs = timeTaken % 60;
+            
+            doc.setFont("helvetica", "normal");
+            doc.text(`Fecha: ${dateStr}`, 15, yPos);
+            doc.text(`Tiempo usado: ${mins} min ${secs} seg`, 120, yPos);
+            yPos += 15;
+
+            let score = 0;
+            let totalClosed = 8;
+            for(let i=0; i<8; i++) {
+                if(answers[i] === questions[i].correct) score++;
+            }
+
+            doc.setFillColor(240, 248, 255);
+            doc.rect(15, yPos, 185, 20, 'F');
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.setTextColor(0, 100, 0);
+            doc.text(`Calificación (Preguntas Cerradas): ${score} / ${totalClosed}`, 105, yPos + 13, {align: "center"});
+            yPos += 30;
+
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+
+            for(let i=0; i<questions.length; i++) {
+                if(yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                doc.setFont("helvetica", "bold");
+                let qText = doc.splitTextToSize(`${i+1}. ${questions[i].title.replace(/^\d+\.\s*/, '').replace('PREGUNTA ABIERTA: ', '')}`, 185);
+                doc.text(qText, 15, yPos);
+                yPos += (qText.length * 6);
+
+                doc.setFont("helvetica", "normal");
+                if(questions[i].type === 'closed') {
+                    let userAnsIdx = answers[i];
+                    let correctIdx = questions[i].correct;
+                    
+                    let userAnsText = userAnsIdx !== null ? questions[i].options[userAnsIdx] : "Sin responder";
+                    let correctText = questions[i].options[correctIdx];
+
+                    if(userAnsIdx === correctIdx) {
+                        doc.setTextColor(0, 128, 0);
+                        doc.text(`Respuesta: ${userAnsText} (Correcta)`, 20, yPos);
+                    } else {
+                        doc.setTextColor(200, 0, 0);
+                        doc.text(`Tu respuesta: ${userAnsText} (Incorrecta)`, 20, yPos);
+                        yPos += 6;
+                        doc.setTextColor(0, 128, 0);
+                        doc.text(`Respuesta correcta: ${correctText}`, 20, yPos);
+                    }
+                    doc.setTextColor(0, 0, 0);
+                } else {
+                    let ansText = answers[i] || "Sin responder";
+                    let splitAns = doc.splitTextToSize(`Respuesta del estudiante: "${ansText}"`, 180);
+                    doc.setTextColor(0, 0, 128);
+                    doc.text(splitAns, 20, yPos);
+                    yPos += (splitAns.length * 6);
+                    doc.setFontSize(10);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text("(Pendiente de calificación por el profesor)", 20, yPos);
+                    doc.setFontSize(12);
+                    doc.setTextColor(0, 0, 0);
+                }
+                yPos += 12;
+            }
+
+            doc.save(`Examen_Quimica_${studentName.replace(/\s+/g, '_')}.pdf`);
+        }
+    </script>
+</body>
+</html>
